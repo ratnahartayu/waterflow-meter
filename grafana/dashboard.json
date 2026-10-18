@@ -1,0 +1,294 @@
+{
+  "title": "Monitoring Toren Desa Tuban",
+  "timezone": "Asia/Jakarta",
+  "schemaVersion": 39,
+  "time": {
+    "from": "now-7d",
+    "to": "now"
+  },
+  "refresh": "5m",
+  "templating": {
+    "list": [
+      {
+        "name": "node",
+        "type": "query",
+        "label": "Node",
+        "query": "select id from node order by id",
+        "datasource": {
+          "type": "postgres"
+        },
+        "refresh": 1
+      }
+    ]
+  },
+  "panels": [
+    {
+      "type": "stat",
+      "title": "Pemakaian hari ini",
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 6,
+        "h": 4
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "m3",
+          "decimals": 2
+        }
+      },
+      "targets": [
+        {
+          "format": "table",
+          "rawSql": "select vol_m3 from rekap_hari where node_id='$node' and tanggal = (now() at time zone 'Asia/Jakarta')::date"
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Debit saat ini",
+      "gridPos": {
+        "x": 6,
+        "y": 0,
+        "w": 6,
+        "h": 4
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "L/min",
+          "decimals": 1
+        }
+      },
+      "targets": [
+        {
+          "format": "table",
+          "rawSql": "select q_lpm from bacaan where node_id='$node' order by ts desc limit 1"
+        }
+      ]
+    },
+    {
+      "type": "gauge",
+      "title": "Isi toren",
+      "gridPos": {
+        "x": 12,
+        "y": 0,
+        "w": 6,
+        "h": 4
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "litre",
+          "min": 0,
+          "max": 2000,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 400
+              },
+              {
+                "color": "green",
+                "value": 800
+              }
+            ]
+          }
+        }
+      },
+      "targets": [
+        {
+          "format": "table",
+          "rawSql": "select toren_l from bacaan where node_id='$node' order by ts desc limit 1"
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Tegangan aki",
+      "gridPos": {
+        "x": 18,
+        "y": 0,
+        "w": 6,
+        "h": 4
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "volt",
+          "decimals": 2,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 11.5
+              },
+              {
+                "color": "green",
+                "value": 12.2
+              }
+            ]
+          }
+        }
+      },
+      "targets": [
+        {
+          "format": "table",
+          "rawSql": "select v_aki from bacaan where node_id='$node' order by ts desc limit 1"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Debit (L/menit, tiap 15 menit)",
+      "gridPos": {
+        "x": 0,
+        "y": 4,
+        "w": 24,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "L/min"
+        }
+      },
+      "targets": [
+        {
+          "format": "time_series",
+          "rawSql": "select ts as time, q_lpm from bacaan where node_id='$node' and $__timeFilter(ts) order by ts"
+        }
+      ]
+    },
+    {
+      "type": "barchart",
+      "title": "Volume per jam (liter)",
+      "gridPos": {
+        "x": 0,
+        "y": 12,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "format": "table",
+          "rawSql": "select jam as time, vol_l from rekap_jam where node_id='$node' and jam >= (now() at time zone 'Asia/Jakarta') - interval '48 hours' order by jam"
+        }
+      ]
+    },
+    {
+      "type": "barchart",
+      "title": "Pemakaian harian 30 hari (m³)",
+      "gridPos": {
+        "x": 12,
+        "y": 12,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "format": "table",
+          "rawSql": "select tanggal as time, vol_m3 from rekap_hari where node_id='$node' and tanggal >= (now() at time zone 'Asia/Jakarta')::date - 30 order by tanggal"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Aliran malam 01.00–04.00 (indikasi kebocoran)",
+      "gridPos": {
+        "x": 0,
+        "y": 20,
+        "w": 12,
+        "h": 7
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "L/min",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 2
+              }
+            ]
+          },
+          "custom": {
+            "thresholdsStyle": {
+              "mode": "line"
+            }
+          }
+        }
+      },
+      "targets": [
+        {
+          "format": "table",
+          "rawSql": "select tanggal as time, q_lpm_malam from uji_malam where node_id='$node' and tanggal >= (now() at time zone 'Asia/Jakarta')::date - 30 order by tanggal"
+        }
+      ]
+    },
+    {
+      "type": "table",
+      "title": "Peringatan aktif",
+      "gridPos": {
+        "x": 12,
+        "y": 20,
+        "w": 12,
+        "h": 7
+      },
+      "targets": [
+        {
+          "format": "table",
+          "rawSql": "select ts, jenis, pesan from peringatan where node_id='$node' and selesai is null order by ts desc"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Isi toren dan pompa (24 jam)",
+      "gridPos": {
+        "x": 0,
+        "y": 27,
+        "w": 12,
+        "h": 7
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "litre"
+        }
+      },
+      "targets": [
+        {
+          "format": "time_series",
+          "rawSql": "select ts as time, toren_l as \"isi toren\", case when pompa then 2000 else 0 end as \"pompa\" from bacaan where node_id='$node' and $__timeFilter(ts) order by ts"
+        }
+      ]
+    },
+    {
+      "type": "barchart",
+      "title": "Neraca air harian: selisih (L)",
+      "gridPos": {
+        "x": 12,
+        "y": 27,
+        "w": 12,
+        "h": 7
+      },
+      "targets": [
+        {
+          "format": "table",
+          "rawSql": "select tanggal as time, selisih_l from neraca_hari where node_id='$node' and tanggal >= (now() at time zone 'Asia/Jakarta')::date - 30 order by tanggal"
+        }
+      ]
+    }
+  ]
+}
