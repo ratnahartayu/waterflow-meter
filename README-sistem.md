@@ -5,9 +5,10 @@ Satu node per toren. Tiap node mengukur tiga hal: air masuk dari pompa (meter ma
 ```
 monitoring-tandon/
 ├── firmware/esp32_flowmeter/     # Arduino sketch ESP32 (satu sketch, config.h per lokasi)
-├── backend/                      # Node.js: MQTT -> Supabase -> alarm -> Telegram
-├── supabase/schema.sql           # tabel, view rekap, neraca_hari, uji_malam, 5 node
-└── grafana/dashboard.json        # dashboard per node (pilih node di atas)
+├── backend/                      # Node.js: MQTT -> Firestore -> alarm -> Telegram
+├── aplikasi/                     # aplikasi operator desa, di-deploy ke Firebase Hosting
+├── firestore.rules               # siapa boleh membaca dan menulis apa
+└── grafana/dashboard.json        # dashboard lama untuk PostgreSQL, belum bisa dipakai dengan Firestore
 ```
 
 ## 1. Lokasi dan ukuran meter
@@ -60,7 +61,7 @@ Payload tiap 15 menit ke `flowmeter/<id>/data`:
 
 Broker: HiveMQ Cloud gratis, port 8883 (SIM7600 mendukung TLS). Dua kredensial: `node_tandon` (publish) dan `backend` (subscribe).
 
-Database: jalankan `supabase/schema.sql` di SQL Editor Supabase; kelima node sudah dimasukkan. View `neraca_hari` dan `uji_malam` yang dipakai alarm dan ringkasan.
+Database: Firestore. Backend menyimpan tiap paket di `node/<id>/bacaan` dan langsung memperbarui rekap harian WIB di `node/<id>/harian/<tanggal>`: air masuk, air keluar, isi toren awal dan akhir hari, jam pompa, dan hasil uji malam (01.00–04.00). Neraca harian dihitung dari rekap ini, jadi tidak perlu view seperti di PostgreSQL. Paket ganda dari buffer microSD diabaikan karena id dokumen bacaan = `ts`. Kelima node dan akun operator dibuat dengan `npm run siapkan -- --pin 1234` di folder backend.
 
 Backend: `cd backend && cp .env.example .env && npm install && npm start`. Alarm yang dijalankan:
 
@@ -77,7 +78,11 @@ Backend: `cd backend && cp .env.example .env && npm install && npm start`. Alarm
 
 Tiap alarm hanya dikirim sekali sampai normal kembali. Ringkasan 06.30 WIB per toren memuat air keluar, air masuk, jam pompa, selisih neraca, dan hasil uji malam.
 
-Dashboard: Grafana Cloud → data source PostgreSQL ke Supabase → impor `grafana/dashboard.json`. Pilih node di menu atas; panel tambahan: isi toren (gauge), isi toren dan pompa 24 jam, selisih neraca 30 hari.
+Tiap peringatan juga disimpan di koleksi `peringatan` dengan status. Operator bisa menandainya "sudah ditangani" dari aplikasi, lengkap dengan nama dan catatan. Kalau kondisinya masih terjadi, backend akan menaikkan peringatan baru.
+
+Ringkasan kemarin bisa dikirim ulang kapan saja dengan `node src/index.js --ringkasan`.
+
+Dashboard: aplikasi operator di `aplikasi/` menggantikan dashboard Grafana. `grafana/dashboard.json` masih ditulis untuk data source PostgreSQL, jadi tidak tersambung ke Firestore.
 
 ## 5. Uji coba lapangan (dua minggu pertama)
 

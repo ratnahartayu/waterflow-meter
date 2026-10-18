@@ -1,0 +1,31 @@
+rules_version = '2';
+
+// Aplikasi operator hanya membaca. Satu-satunya yang boleh ditulis dari aplikasi:
+// menandai peringatan "sudah ditangani" beserta nama dan catatan.
+// Backend menulis lewat akun layanan (Admin SDK), jadi tidak terkena aturan ini.
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function operator() {
+      return request.auth != null && request.auth.token.operator == true;
+    }
+
+    match /node/{id} {
+      allow read: if operator();
+      match /bacaan/{ts} { allow read: if operator(); }
+      match /harian/{tanggal} { allow read: if operator(); }
+    }
+
+    match /peringatan/{id} {
+      allow read: if operator();
+      allow update: if operator()
+        && resource.data.selesai == null
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['selesai', 'ditangani_oleh', 'catatan'])
+        && request.resource.data.selesai == request.time
+        && request.resource.data.ditangani_oleh is string
+        && request.resource.data.ditangani_oleh.size() > 0
+        && request.resource.data.ditangani_oleh.size() <= 60
+        && request.resource.data.catatan is string
+        && request.resource.data.catatan.size() <= 300;
+    }
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "name": "Pemantauan Meter Air Cerdas",
+  "short_name": "Toren Desa",
+  "lang": "id",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#F4F8FC",
+  "theme_color": "#1565C0",
+  "icons": [{ "src": "/ikon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }]
+}

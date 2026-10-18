@@ -1,0 +1,14 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "peringatan",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "node_id", "order": "ASCENDING" },
+        { "fieldPath": "jenis", "order": "ASCENDING" },
+        { "fieldPath": "selesai", "order": "ASCENDING" }
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}
